@@ -11,6 +11,7 @@ False Negative Rate (phishing → safe): 10.0%
 
 ## Quick Start
 ```bash
+cd .\ml\
 uv sync
 ```
 Notebook `cwd` should be `ml/notebooks/`
