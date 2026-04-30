@@ -1,0 +1,13 @@
+[project]
+name = "phishvigil-ml"
+version = "0.1.0"
+description = "Model training for PhishVigil"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipykernel<7.0.0",
+    "kagglehub>=1.0.1",
+    "pandas>=3.0.2",
+    "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
+]
