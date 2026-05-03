@@ -60,3 +60,10 @@ git clone https://github.com/PhishVigil/phishvigil.git
 cd .\ml\
 uv sync
 ```
+
+To export model, run:
+1. `0-download_kaggle_dataset.ipynb` - first time only
+2. `2-feature_extraction.ipynb` - to prepare dataset
+3. `3-training.ipynb` - to train and export model
+
+> Notebook `1-analysis.ipynb` is optional

@@ -16,3 +16,9 @@ An open-source security platform that blocks phishing attempts directly in the b
 [Browser Extension] → extracts features → local ONNX inference → block/allow navigation\
 ↓ (optional telemetry)\
 [Backend Server] → ingests reports → powers SOC Dashboard
+
+## Details
+You can find more details in corresponding sections:
+- [ML Training](ml/README.md)
+- [Browser Extension](extension/README.md)
+- Backend Server (Coming soon)
