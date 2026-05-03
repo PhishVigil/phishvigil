@@ -1,60 +1,130 @@
 // apps/extension/src/background.ts
-
 console.log('[PhishVigil] Background worker loaded');
 
-// Кэш для предотвращения повторной проверки одного и того же URL за короткое время
 const checkedUrls = new Map<string, number>();
+const OFFSCREEN_URL = chrome.runtime.getURL('offscreen.html');
 
+// 🔥 Promise-кэш для offscreen: гарантирует однократную инициализацию
+let offscreenPromise: Promise<void> | null = null;
 
-// === 1. Самый надежный способ для SPA (GitHub, React, Vue и т.д.) ===
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Событие срабатывает много раз (loading, complete и т.д.)
-  // Нас интересует только момент, когда изменился URL
-  if (changeInfo.url) {
-    await checkUrl(changeInfo.url, tabId, 'tabs.onUpdated');
-  }
-});
-
-// === 2. Перехват навигации для обычных сайтов и iframe ===
-chrome.webNavigation.onCommitted.addListener(async (details) => {
-  // Проверяем только главный фрейм (не рекламу и не виджеты)
-  if (details.frameId !== 0) return;
+async function ensureOffscreen(): Promise<void> {
+  if (offscreenPromise) return offscreenPromise;
   
-  // Если URL уже был проверен через tabs.onUpdated, пропускаем (чтобы не дублировать)
-  // Но иногда webNavigation срабатывает быстрее, так что лучше использовать debounce
-  await checkUrl(details.url, details.tabId, 'webNavigation');
-});
+  offscreenPromise = (async () => {
+    console.log('[PhishVigil] Creating offscreen document...');
+    
+    try {
+      await chrome.offscreen.createDocument({
+        url: OFFSCREEN_URL,
+        reasons: [chrome.offscreen.Reason.WORKERS],
+        justification: 'ML inference for phishing detection'
+      });
+    } catch (err: any) {
+      // Chrome бросает ошибку, если offscreen уже существует — это нормально
+      if (!err.message?.includes('Only one offscreen document')) {
+        console.error('[PhishVigil] Offscreen create error:', err);
+        throw err;
+      }
+      console.log('[PhishVigil] Offscreen already exists');
+    }
+    
+    // Ждём сигнал готовности с таймаутом
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        chrome.runtime.onMessage.removeListener(handler);
+        reject(new Error('Offscreen did not send OFFSCREEN_READY within 5s'));
+      }, 5000);
+      
+      const handler = (msg: any) => {
+        if (msg.type === 'OFFSCREEN_READY') {
+          clearTimeout(timeout);
+          chrome.runtime.onMessage.removeListener(handler);
+          console.log('[PhishVigil] ✅ Offscreen ready');
+          resolve();
+        }
+      };
+      chrome.runtime.onMessage.addListener(handler);
+    });
+  })();
+  
+  return offscreenPromise;
+}
 
-// === Основная логика проверки ===
+async function runInference(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: 'PREDICT_PHISHING', url },
+      (response) => {
+        // 🔥 Обязательно проверяем lastError в MV3
+        if (chrome.runtime.lastError) {
+          console.error('[PhishVigil] Messaging error:', chrome.runtime.lastError.message);
+          resolve(false);
+          return;
+        }
+        if (response?.success) {
+          resolve(response.isPhishing);
+        } else {
+          console.error('[PhishVigil] Inference failed:', response?.error);
+          resolve(false);
+        }
+      }
+    );
+  });
+}
+
 async function checkUrl(url: string, tabId: number, source: string) {
-  // Игнорируем системные страницы Chrome
-  if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) return;
+  if (
+    url.startsWith('chrome://') ||
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('chrome-untrusted://') ||
+    !url.startsWith('http')
+  ) return;
 
-  // Защита от спама (debounce): не проверяем URL чаще чем раз в 500мс для одной вкладки
   const key = `${tabId}:${url}`;
   const lastCheck = checkedUrls.get(key);
   const now = Date.now();
-
-  if (lastCheck && now - lastCheck < 500) {
-    return; 
-  }
-
+  if (lastCheck && now - lastCheck < 500) return;
   checkedUrls.set(key, now);
 
-  console.log(` [PhishVigil] Check: ${url} (Source: ${source})`);
-  
-  // TODO: Здесь будет вызов ML
-  // const isPhishing = await runModel(url);
-  // if (isPhishing) blockTab(tabId);
+  console.log(`[PhishVigil] Check: ${url} (Source: ${source})`);
+
+  try {
+    await ensureOffscreen(); // ← теперь надёжно ждёт готовности
+    const isPhishing = await runInference(url);
+    
+    if (isPhishing) {
+      console.warn(`[PhishVigil] 🚫 PHISHING: ${url}`);
+      await blockTab(tabId);
+    }
+  } catch (err) {
+    console.error('[PhishVigil] Check error:', err);
+  }
 }
 
-// Функция блокировки
 async function blockTab(tabId: number) {
-  console.warn(` [PhishVigil] BLOCKED tab ${tabId}`);
-  // Пока просто перенаправляем на пустую страницу
   try {
     await chrome.tabs.update(tabId, { url: 'about:blank' });
   } catch (e) {
-    console.error(e);
+    console.error('[PhishVigil] Block error:', e);
   }
 }
+
+// Слушатели
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.url) await checkUrl(changeInfo.url, tabId, 'tabs.onUpdated');
+});
+
+chrome.webNavigation.onCommitted.addListener(async (details) => {
+  if (details.frameId === 0) await checkUrl(details.url, details.tabId, 'webNavigation');
+});
+
+// Очистка кэша
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, time] of checkedUrls.entries()) {
+    if (now - time > 60_000) checkedUrls.delete(key);
+  }
+}, 60_000);
+
+// 🔥 Keep-alive для отладки: не даёт воркеру уснуть
+chrome.runtime.onConnect.addListener(() => {});

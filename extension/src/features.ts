@@ -1,3 +1,5 @@
+import * as ort from 'onnxruntime-web';
+
 function shannonEntropy(s: string): number {
   if (!s) return 0;
   const freq = new Map<string, number>();
@@ -11,16 +13,16 @@ function shannonEntropy(s: string): number {
   return entropy;
 }
 
-export function extractFeatures(url: string): Float32Array {
+export function extractFeatures(url: string): ort.Tensor {
   url = url.trim();
   const urlLen = url.length;
-  if (urlLen === 0) return new Float32Array(22).fill(0);
+  if (urlLen === 0) return new ort.Tensor('float32', new Float32Array(22).fill(0), [1, 22]);
 
   let letterCnt = 0, digitCnt = 0, specialCnt = 0;
   for (const c of url) {
     if (/[a-zA-Z]/.test(c)) letterCnt++;
     else if (/[0-9]/.test(c)) digitCnt++;
-    else if (!/[./?&=:]/.test(c)) specialCnt++;
+    else specialCnt++;
   }
 
   const eqCnt = (url.match(/=/g) || []).length;
@@ -56,11 +58,13 @@ export function extractFeatures(url: string): Float32Array {
   const entropy = shannonEntropy(url);
   
 
-  return new Float32Array([
+  const features = new Float32Array([
     urlLen, domLen, isIp, tldLen, subdomCnt,
     letterCnt, digitCnt, specialCnt,
     eqCnt, qmCnt, ampCnt, dotCnt, dashCnt, underCnt,
     letterRatio, digitRatio, specRatio,
     isHttps, slashCnt, entropy, pathLen, queryLen
   ]);
+
+  return new ort.Tensor('float32', features, [1, 22]);
 }

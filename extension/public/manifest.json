@@ -1,24 +1,21 @@
 {
   "manifest_version": 3,
   "name": "PhishVigil",
-  "version": "0.1.0",
-  "description": "Client-side phishing detection with ONNX-powered ML",
-  "permissions": [
-    "webNavigation",
-    "storage",
-    "tabs"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "version": "1.0.0",
+  "permissions": ["tabs", "webNavigation", "offscreen"],
+  "host_permissions": ["<all_urls>"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
   "background": {
-    "service_worker": "src/background.js",
+    "service_worker": "background.js",
     "type": "module"
   },
-  "web_accessible_resources": [
-    {
-      "resources": ["model/*.onnx", "model/*.wasm"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "web_accessible_resources": [{
+    "resources": ["wasm/*.wasm", "wasm/*.mjs", "models/*.onnx"],
+    "matches": ["<all_urls>"]
+  }],
+  "action": {
+    "default_title": "PhishVigil"
+  }
 }
