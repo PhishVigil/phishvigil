@@ -11,21 +11,21 @@ Chrome extension for client-side phishing inference
 
 ### Usage
 1. Clone repo
-```bash
-git clone https://github.com/PhishVigil/phishvigil.git
-```
+   ```bash
+   git clone https://github.com/PhishVigil/phishvigil.git
+   ```
 
-2. Train and export `.onnx` model using [ML section instructions](../ml/README.md)
+2. Train and export `.onnx` model. Follow [ML pipeline guide](../ml/README.md#usage)
 
 3. Build extension
-```bash
-cd .\extension\
-npm install
-npm run build
-```
+   ```bash
+   cd extension/
+   npm install
+   npm run build
+   ```
 
 4. In Google Chrome
-  * Go to `Extensions` menu
-  * Toggle `Dev Mode` ON
-  * Hit `Load Unpacked Extension`
-  * Choose `phishvigil/extension/dist/` directory
+   * Go to `Extensions` menu
+   * Toggle `Dev Mode` ON
+   * Hit `Load Unpacked Extension`
+   * Choose `phishvigil/extension/dist/` directory

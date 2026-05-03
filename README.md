@@ -18,7 +18,8 @@ An open-source security platform that blocks phishing attempts directly in the b
 [Backend Server] → ingests reports → powers SOC Dashboard
 
 ## Details
-You can find more details in corresponding sections:
-- [ML Training](ml/README.md)
-- [Browser Extension](extension/README.md)
-- Backend Server (Coming soon)
+Documentation for individual components:
+
+- [ML Training](ml/README.md) — model architecture, dataset, export pipeline
+- [Browser Extension](extension/README.md) — manifest, permissions, inference flow
+- Backend Server (Planned) — FastAPI + dashboard specs coming soon
