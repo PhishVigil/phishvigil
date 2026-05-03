@@ -1,5 +1,5 @@
 import { env, Tensor, InferenceSession } from 'onnxruntime-web';
-import { extractFeatures } from '../features';
+import { extractFeatures, extractDomainFeatures } from '../features';
 
 console.log('[PhishVigil] Offscreen context loaded');
 
@@ -9,13 +9,13 @@ async function loadModel(): Promise<void> {
   if (session) return;
   
   env.wasm.wasmPaths = {
-    wasm: chrome.runtime.getURL('wasm/ort-wasm-simd-threaded.wasm'),
-    mjs: chrome.runtime.getURL('wasm/ort-wasm-simd-threaded.mjs')
+    wasm: chrome.runtime.getURL('../wasm/ort-wasm-simd-threaded.wasm'),
+    mjs: chrome.runtime.getURL('../wasm/ort-wasm-simd-threaded.mjs')
   };
   env.wasm.numThreads = 2;
   env.wasm.simd = true;
   
-  const modelUrl = chrome.runtime.getURL('models/phish_model.onnx');
+  const modelUrl = chrome.runtime.getURL('../models/phish_model.onnx');
   session = await InferenceSession.create(modelUrl, {
     executionProviders: ['wasm']
   });
@@ -30,10 +30,9 @@ function extractScalar(output: Tensor): number {
     throw new Error(`Expected numeric tensor, got ${output.type}`);
   }
 
-  // Теперь можно безопасно привести к Iterable<number>
   const data = Array.from(output.data as Iterable<number>);
   if (data.length === 1) return data[0];
-  if (data.length === 2) return data[1]; // P(phishing)
+  if (data.length === 2) return data[1];
   throw new Error(`Unexpected output shape: ${output.dims}`);
 }
 
@@ -41,32 +40,34 @@ async function predict(url: string): Promise<boolean> {
   await loadModel();
   if (!session) throw new Error('Model not loaded');
   
-  const inputTensor = extractFeatures(url);
+  const features = extractDomainFeatures(url);
+  const inputTensor = new Tensor('float32', features, [1, features.length])
   const feeds: Record<string, Tensor> = { [session.inputNames[0]]: inputTensor };
   const results = await session.run(feeds);
   
+  const labelTensor = results['label'] as Tensor;
   const probTensor = results['probabilities'] as Tensor;
+
   if (!(probTensor instanceof Tensor)) {
     throw new Error(`Expected tensor for "probabilities"`);
   }
   
   const phishingProb = extractScalar(probTensor);
-  console.log(`[DEBUG] Phishing probability: ${phishingProb}`);
+  const label = extractScalar(labelTensor);
+  console.log(`[DEBUG] Phishing label: ${label}, probability: ${phishingProb}`);
   
-  return phishingProb > 0.7;
+  return label == 1;
 }
 
-// 🔥 1. Сначала регистрируем обработчик сообщений
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'PREDICT_PHISHING') {
     predict(msg.url)
       .then(result => sendResponse({ success: true, isPhishing: result }))
       .catch(err => sendResponse({ success: false, error: err.message }));
-    return true; // важно: держим канал открытым для асинхронного ответа
+    return true;
   }
 });
 
-// 🔥 2. Только потом загружаем модель и шлём READY
 (async () => {
   try {
     await loadModel();

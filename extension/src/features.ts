@@ -1,5 +1,3 @@
-import { Tensor } from 'onnxruntime-web';
-
 function shannonEntropy(s: string): number {
   if (!s) return 0;
   const freq = new Map<string, number>();
@@ -13,10 +11,11 @@ function shannonEntropy(s: string): number {
   return entropy;
 }
 
-export function extractFeatures(url: string): Tensor {
+export function extractFeatures(url: string): Float32Array {
   url = url.trim();
   const urlLen = url.length;
-  if (urlLen === 0) return new Tensor('float32', new Float32Array(22).fill(0), [1, 22]);
+  // if (urlLen === 0) return new Tensor('float32', new Float32Array(22).fill(0), [1, 22]);
+  if (urlLen === 0) return new Float32Array(22).fill(0);
 
   let letterCnt = 0, digitCnt = 0, specialCnt = 0;
   for (const c of url) {
@@ -66,5 +65,75 @@ export function extractFeatures(url: string): Tensor {
     isHttps, slashCnt, entropy, pathLen, queryLen
   ]);
 
-  return new Tensor('float32', features, [1, 22]);
+  return features;
+}
+
+export function extractDomainFeatures(url: string): Float32Array {
+  let hostname = '';
+  try {
+    const parsed = new URL(url);
+    hostname = parsed.hostname;
+  } catch {
+    const match = url.match(/^(?:https?:\/\/)?([^\/\?#]+)/i);
+    hostname = match?.[1] || '';
+  }
+  
+  if (!hostname) {
+    return new Float32Array(8).fill(0);
+  }
+  
+  const hostLower = hostname.toLowerCase();
+  
+  const hasWww = hostLower.startsWith('www.') ? 1 : 0;
+  const hostClean = hasWww ? hostLower.slice(4) : hostLower;
+
+  const entropy = shannonEntropy(hostClean);
+  
+  const isIpRegex = /^\d{1,3}(\.\d{1,3}){3}$/;
+  const isIp = isIpRegex.test(hostClean) ? 1 : 0;
+  
+  const parts = hostClean ? hostClean.split('.') : [];
+  
+  let tldLen = 0, domLen = 0, subdomCnt = 0;
+  let domDigits = 0, domLetters = 0, domAlnum = 0;
+  
+  if (isIp || parts.length < 2) {
+    tldLen = 0;
+    domLen = hostClean.length;
+    subdomCnt = 0;
+    domDigits = 0;
+    domLetters = 0;
+    domAlnum = domLen;
+  } else {
+    tldLen = parts[parts.length - 1].length;
+    const domParts = parts.slice(-2);
+    const domStr = domParts.join('.');
+    domLen = domStr.length;
+    subdomCnt = Math.max(0, parts.length - 2);
+    
+    for (const c of domStr) {
+      if (/[0-9]/.test(c)) domDigits++;
+      else if (/[a-zA-Z]/.test(c)) domLetters++;
+    }
+    domAlnum = domDigits + domLetters;
+  }
+  
+  const domDigitRatio = domLen > 0 ? domDigits / domLen : 0;
+  const domLetterRatio = domAlnum > 0 ? domLetters / domAlnum : 0;
+  
+  const isHttps = url.toLowerCase().startsWith('https://') ? 1 : 0;
+  
+  const features = new Float32Array([
+    domLen,
+    isIp,
+    tldLen,
+    subdomCnt,
+    // hasWww,
+    entropy,
+    domDigitRatio,
+    domLetterRatio,
+    isHttps,
+  ]);
+  
+  return features;
 }

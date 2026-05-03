@@ -1,8 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "watch": "vite build --watch"
+    "postbuild": "node scripts/copy-assets.cjs",
+    "build": "vite build && npm run postbuild"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

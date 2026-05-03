@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "PhishVigil",
-  "version": "1.0.0",
-  "permissions": ["tabs", "webNavigation", "offscreen"],
+  "version": "1.0.1",
+  "permissions": ["tabs", "webNavigation", "offscreen", "notifications", "scripting", "activeTab"],
   "host_permissions": ["<all_urls>"],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
@@ -10,6 +10,9 @@
   "background": {
     "service_worker": "background.js",
     "type": "module"
+  },
+  "icons": {
+    "128": "icon128.png"
   },
   "web_accessible_resources": [{
     "resources": ["wasm/*.wasm", "wasm/*.mjs", "models/*.onnx"],
