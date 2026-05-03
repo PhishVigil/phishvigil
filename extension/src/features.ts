@@ -1,4 +1,4 @@
-import * as ort from 'onnxruntime-web';
+import { Tensor } from 'onnxruntime-web';
 
 function shannonEntropy(s: string): number {
   if (!s) return 0;
@@ -13,10 +13,10 @@ function shannonEntropy(s: string): number {
   return entropy;
 }
 
-export function extractFeatures(url: string): ort.Tensor {
+export function extractFeatures(url: string): Tensor {
   url = url.trim();
   const urlLen = url.length;
-  if (urlLen === 0) return new ort.Tensor('float32', new Float32Array(22).fill(0), [1, 22]);
+  if (urlLen === 0) return new Tensor('float32', new Float32Array(22).fill(0), [1, 22]);
 
   let letterCnt = 0, digitCnt = 0, specialCnt = 0;
   for (const c of url) {
@@ -66,5 +66,5 @@ export function extractFeatures(url: string): ort.Tensor {
     isHttps, slashCnt, entropy, pathLen, queryLen
   ]);
 
-  return new ort.Tensor('float32', features, [1, 22]);
+  return new Tensor('float32', features, [1, 22]);
 }

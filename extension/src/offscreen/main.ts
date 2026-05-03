@@ -1,23 +1,22 @@
-// apps/extension/src/offscreen/main.ts
-import * as ort from 'onnxruntime-web';
+import { env, Tensor, InferenceSession } from 'onnxruntime-web';
 import { extractFeatures } from '../features';
 
 console.log('[PhishVigil] Offscreen context loaded');
 
-let session: ort.InferenceSession | null = null;
+let session: InferenceSession | null = null;
 
 async function loadModel(): Promise<void> {
   if (session) return;
   
-  ort.env.wasm.wasmPaths = {
+  env.wasm.wasmPaths = {
     wasm: chrome.runtime.getURL('wasm/ort-wasm-simd-threaded.wasm'),
     mjs: chrome.runtime.getURL('wasm/ort-wasm-simd-threaded.mjs')
   };
-  ort.env.wasm.numThreads = 2;
-  ort.env.wasm.simd = true;
+  env.wasm.numThreads = 2;
+  env.wasm.simd = true;
   
   const modelUrl = chrome.runtime.getURL('models/phish_model.onnx');
-  session = await ort.InferenceSession.create(modelUrl, {
+  session = await InferenceSession.create(modelUrl, {
     executionProviders: ['wasm']
   });
   
@@ -26,8 +25,13 @@ async function loadModel(): Promise<void> {
   console.log('[DEBUG] Output names:', session.outputNames);
 }
 
-function extractScalar(output: ort.Tensor): number {
-  const data = Array.from(output.data) as number[];
+function extractScalar(output: Tensor): number {
+  if (!['float32', 'int32', 'int64'].includes(output.type)) {
+    throw new Error(`Expected numeric tensor, got ${output.type}`);
+  }
+
+  // Теперь можно безопасно привести к Iterable<number>
+  const data = Array.from(output.data as Iterable<number>);
   if (data.length === 1) return data[0];
   if (data.length === 2) return data[1]; // P(phishing)
   throw new Error(`Unexpected output shape: ${output.dims}`);
@@ -38,11 +42,11 @@ async function predict(url: string): Promise<boolean> {
   if (!session) throw new Error('Model not loaded');
   
   const inputTensor = extractFeatures(url);
-  const feeds: Record<string, ort.Tensor> = { [session.inputNames[0]]: inputTensor };
+  const feeds: Record<string, Tensor> = { [session.inputNames[0]]: inputTensor };
   const results = await session.run(feeds);
   
-  const probTensor = results['probabilities'] as ort.Tensor;
-  if (!(probTensor instanceof ort.Tensor)) {
+  const probTensor = results['probabilities'] as Tensor;
+  if (!(probTensor instanceof Tensor)) {
     throw new Error(`Expected tensor for "probabilities"`);
   }
   
