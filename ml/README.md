@@ -5,9 +5,9 @@ We started by training a **Decision Tree Classifier** on the [Phishing URL Detec
 
 | Metric | Value |
 | ------ | ----- |
-| Accuracy | 0.962 ± 0.007 |
-| False Positive Rate (safe → phishing) | 1.6% |
-| False Negative Rate (phishing → safe) | 10.0% |
+| F1-macro | 0.942 |
+| Safe Recall | 0.984 |
+| Phishing Recall | 0.898 |
 
 ### The Problem: False Positives in Real-World Testing
 Despite good validation metrics, testing on real-world URLs revealed **excessive false positives** on legitimate sites
@@ -34,9 +34,9 @@ After retraining with the simplified, domain-only feature set:
 
 | Metric | Value |
 | ------ | ----- |
-| Accuracy | 0.931 ± 0.019 |
-| False Positive Rate (safe → phishing) | 2.1% | 
-| False Negative Rate (phishing → safe) | 24.0% | 
+| F1-macro | 0.887 |
+| Safe Recall | 0.979 | 
+| Phishing Recall | 0.759 |
 
 
 While overall accuracy decreased, **false positives on legitimate complex URLs dropped dramatically** (subjectively evaluated during manual testing).
