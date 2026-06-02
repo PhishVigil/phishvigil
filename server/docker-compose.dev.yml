@@ -1,0 +1,13 @@
+services:
+  backend:
+    build:
+      context: .
+      target: production
+    ports:
+     - "8000:8000"
+    command: --reload
+    develop:
+     watch:
+      - path: ./src
+        action: sync
+        target: /app/src
