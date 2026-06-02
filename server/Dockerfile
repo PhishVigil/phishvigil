@@ -1,11 +1,11 @@
 FROM python:3.12-slim-bookworm AS base
-WORKDIR /app
+WORKDIR /phishvigil
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY --from=ghcr.io/astral-sh/uv:0.11.16 /uv /uvx /bin/
 
 COPY uv.lock pyproject.toml ./
 RUN uv sync --frozen --no-dev
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/phishvigil/.venv/bin:$PATH"
 
 COPY ./app ./app
 

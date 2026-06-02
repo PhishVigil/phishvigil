@@ -8,6 +8,6 @@ services:
     command: --reload
     develop:
      watch:
-      - path: ./src
+      - path: ./app
         action: sync
-        target: /app/src
+        target: /phishvigil/app
