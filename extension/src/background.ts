@@ -15,6 +15,61 @@ chrome.runtime.onInstalled.addListener(() => {
   ensureOffscreen();
 });
 
+async function getClientUuid(): Promise<string> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['client_uuid'], (result) => {
+      if (result.client_uuid) {
+        resolve(result.client_uuid);
+      } else {
+        const uuid = crypto.randomUUID();
+        chrome.storage.local.set({ client_uuid: uuid }, () => {
+          resolve(uuid);
+        });
+      }
+    });
+  });
+}
+
+function getDomainFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch (e) {
+    return url;
+  }
+}
+
+async function sendIncident(url: string) {
+  try {
+    const client_uuid = await getClientUuid();
+    const event_time = new Date().toISOString();
+    const domain = getDomainFromUrl(url);
+
+    const payload = {
+      client_uuid,
+      event_time,
+      domain
+    };
+
+    console.log('[PhishVigil] Sending incident to server:', payload);
+
+    const response = await fetch('http://localhost:8000/api/v1/incidents/new', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.error('[PhishVigil] Failed to send incident:', response.status, response.statusText);
+    } else {
+      console.log('[PhishVigil] Incident sent successfully');
+    }
+  } catch (error) {
+    console.error('[PhishVigil] Error sending incident:', error);
+  }
+}
+
 async function ensureOffscreen(): Promise<void> {
   if (offscreenPromise) return offscreenPromise;
 
@@ -105,6 +160,9 @@ async function checkUrl(url: string, tabId: number, source: string) {
 
     if (isPhishing) {
       console.warn(`[PhishVigil] 🚫 PHISHING: ${url}`);
+      
+      await sendIncident(url); 
+      
       await blockTab(tabId);
     }
   } catch (err) {
