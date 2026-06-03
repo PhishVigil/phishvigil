@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phish Vigil</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+</head>
+<body>
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><img src="{{ url_for('static', path='images/logo.png') }}" alt="" style="width: 40px"></div>
+            <span class="logo-text">Phish Vigil</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Мониторинг</div>
+            <ul class="nav-list">
+                <li>
+                    <a href="#" class="nav-link active">
+                        <span class="nav-icon">🎯</span>
+                        <span>Атаки сегодня</span>
+                        <span class="nav-badge">{{ incidents|length }}</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">🌐</span>
+                        <span>Топ доменов</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">👤</span>
+                        <span>Топ жертв</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="nav-section-label">Система</div>
+            <ul class="nav-list">
+                <li>
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">⚙️</span>
+                        <span>Настройки</span>
+                    </a>
+                </li>
+                <!-- <li>
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon">📋</span>
+                        <span>Журнал событий</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link">
+                        <span class="nav-icon"></span>
+                        <span>Отчёты</span>
+                    </a>
+                </li> -->
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Система активна</span>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar">AD</div>
+                <div class="user-meta">
+                    <span class="user-name">Admin</span>
+                    <span class="user-role">Администратор</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-left">
+                <h1>Атаки за сегодня</h1>
+                <!-- <p class="header-subtitle">Мониторинг фишинговых инцидентов в реальном времени</p> -->
+            </div>
+            <div class="header-right">
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-value">{{ incidents|length }}</div>
+                        <div class="stat-label">Всего</div>
+                    </div>
+                    <!-- <div class="stat-card stat-card--danger">
+                        <div class="stat-value">{{ incidents|selectattr('details')|list|length }}</div>
+                        <div class="stat-label">Критические</div>
+                    </div> -->
+                </div>
+            </div>
+        </header>
+
+        {% if incidents %}
+        <div class="table-wrapper">
+            <table class="incident-table">
+                <thead>
+                    <tr>
+                        <th>UUID клиента</th>
+                        <th>Время события</th>
+                        <th>Домен</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for incident in incidents %}
+                    <tr>
+                        <td class="uuid-cell">{{ incident.client_uuid }}</td>
+                        <td class="time-cell">{{ incident.event_time.strftime('%H:%M:%S') }}</td>
+                        <td class="domain-cell">{{ incident.domain }}</td>
+                        
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            <p>Всего инцидентов: <strong>{{ incidents|length }}</strong></p>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🛡️</div>
+            <h2>Угроз не обнаружено</h2>
+            <p>Все системы под контролем</p>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>
