@@ -21,7 +21,9 @@
                     <a href="#" class="nav-link active">
                         <span class="nav-icon">🎯</span>
                         <span>Атаки сегодня</span>
+                        {% if incidents|length > 0 %}
                         <span class="nav-badge">{{ incidents|length }}</span>
+                        {% endif %}
                     </a>
                 </li>
                 <li>
@@ -127,7 +129,7 @@
         <div class="empty-state">
             <div class="empty-icon">🛡️</div>
             <h2>Угроз не обнаружено</h2>
-            <p>Все системы под контролем</p>
+            <p>Все под контролем</p>
         </div>
         {% endif %}
     </main>
