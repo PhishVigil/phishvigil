@@ -3,3 +3,15 @@ services:
     build:
       context: .
       target: test-runner
+  db:
+    volumes:
+      - test_db_volume:/var/lib/postgresql
+    healthcheck:
+      interval: 1s
+
+volumes:
+  test_db_volume:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
